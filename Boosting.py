@@ -29,7 +29,7 @@ from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torch.utils.data import Dataset
 
-from timm.models.vision_transformer import Block  # 导入Block类
+from timm.models.vision_transformer import Block  # Import the Block class
 
 
 import torch
@@ -67,7 +67,7 @@ class AttentionMaskDataset(Dataset):
         
         class_names = sorted(os.listdir(root_dir))
         if not class_names:
-            raise ValueError(f"在 {root_dir} 中未找到任何类别目录")
+            raise ValueError(f"No class directories found in {root_dir}")
         
         for class_id, class_name in enumerate(class_names):
             class_path = os.path.join(root_dir, class_name)
@@ -78,7 +78,7 @@ class AttentionMaskDataset(Dataset):
             for image_name in image_names:
                 image_path = os.path.join(class_path, image_name, 'original.png')
                 if not os.path.isfile(image_path):
-                    print(f"警告: 图像文件 {image_path} 不存在，跳过")
+                    print(f"Warning: Image file {image_path} does not exist, skipping")
                     continue
                 
                 mask_paths = []
@@ -86,7 +86,7 @@ class AttentionMaskDataset(Dataset):
                 for mask_id in range(16):
                     mask_path = os.path.join(class_path, image_name, f'head_{mask_id}_mask.png')
                     if not os.path.isfile(mask_path):
-                        print(f"警告: 掩码文件 {mask_path} 不存在，跳过样本")
+                        print(f"Warning: Mask file {mask_path} does not exist, skipping sample")
                         valid = False
                         break
                     mask_paths.append(mask_path)
@@ -104,7 +104,7 @@ class AttentionMaskDataset(Dataset):
                     self.valid_samples.append(self.index_counter)
                     self.index_counter += 1
         
-        print(f"数据集初始化完成，共有 {len(self.valid_samples)}/{len(self.samples)} 个有效样本。")
+        print(f"Dataset initialized, with {len(self.valid_samples)}/{len(self.samples)} valid samples.")
     
     def __len__(self):
         return len(self.samples)
@@ -118,7 +118,7 @@ class AttentionMaskDataset(Dataset):
                     with Image.open(sample['image_path']) as img:
                         image = img.copy().convert('RGB')
                 except (OSError, IOError, Image.DecompressionBombError) as e:
-                    print(f"警告: 无法读取图像 {sample['image_path']} (尝试 {attempt+1}/3): {str(e)}")
+                    print(f"Warning: Could not read image {sample['image_path']} (attempt {attempt+1}/3): {str(e)}")
                     idx = random.choice(self.valid_samples)
                     continue
                 
@@ -130,7 +130,7 @@ class AttentionMaskDataset(Dataset):
                             mask = mask_img.copy().convert('L')
                             masks.append(mask)
                     except (OSError, IOError, Image.DecompressionBombError) as e:
-                        print(f"警告: 无法读取掩码 {mask_path} (尝试 {attempt+1}/3): {str(e)}")
+                        print(f"Warning: Could not read mask {mask_path} (attempt {attempt+1}/3): {str(e)}")
                         mask_loaded = False
                         break
                 
@@ -154,7 +154,7 @@ class AttentionMaskDataset(Dataset):
                     
                     masks_tensor = torch.stack(transformed_masks)
                 except Exception as e:
-                    print(f"警告: 变换处理时出错 (尝试 {attempt+1}/3): {str(e)}")
+                    print(f"Warning: Error during transformation processing (attempt {attempt+1}/3): {str(e)}")
                     idx = random.choice(self.valid_samples)
                     continue
                 
@@ -169,15 +169,15 @@ class AttentionMaskDataset(Dataset):
                 }
             
             except Exception as e:
-                print(f"严重警告: 加载样本 {idx} 时发生意外错误 (尝试 {attempt+1}/3): {str(e)}")
+                print(f"Critical Warning: Unexpected error loading sample {idx} (attempt {attempt+1}/3): {str(e)}")
                 if attempt < 2:
                     idx = random.choice(self.valid_samples)
                     continue
                 else:
-                    print(f"错误: 无法加载样本 {idx}，使用空白样本替代")
+                    print(f"Error: Failed to load sample {idx}, substituting with a blank sample")
                     return self.blank_sample
         
-        print(f"错误: 无法加载样本 {idx} (尝试3次失败)，使用空白样本")
+        print(f"Error: Failed to load sample {idx} (3 attempts failed), using a blank sample")
         return self.blank_sample
     
     def _create_blank_sample(self, size=(224, 224)):
@@ -190,7 +190,7 @@ class AttentionMaskDataset(Dataset):
             'labels': 0,
             'class_name': "blank",
             'image_name': "blank",
-            'index': -1  # 特殊值标识问题样本
+            'index': -1  # Special value to identify problematic samples
         }
     
     def validate_sample(self, idx):
@@ -239,15 +239,15 @@ class DeiTMAE(nn.Module):
         #for param in self.encoder.parameters():
         #    param.requires_grad = False
         
-        print(f"初始化DeiTMAE模型: {model_name}")
-        print(f"编码器维度: {self.embed_dim}, 解码器维度: {decoder_dim}")
-        print(f"解码器深度: {decoder_depth}, 注意力头数: {decoder_num_heads}")
+        print(f"Initializing DeiTMAE model: {model_name}")
+        print(f"Encoder dimension: {self.embed_dim}, Decoder dimension: {decoder_dim}")
+        print(f"Decoder depth: {decoder_depth}, Number of attention heads: {decoder_num_heads}")
         
         if local_checkpoint:
             self.load_checkpoint(local_checkpoint)
     
     def load_checkpoint(self, checkpoint_path):
-        print(f"加载本地模型权重：{checkpoint_path}")
+        print(f"Loading local model weights: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
         
         model_state_dict = self.encoder.state_dict()
@@ -256,20 +256,20 @@ class DeiTMAE(nn.Module):
         filtered_state_dict = {k: v for k, v in checkpoint_model.items() if k in model_state_dict}
         
         self.encoder.load_state_dict(filtered_state_dict, strict=False)
-        print(f"成功加载编码器部分的权重：{checkpoint_path}")
+        print(f"Successfully loaded encoder weights from: {checkpoint_path}")
 
     def forward(self, x, mask=None):
         B, C, H, W = x.shape
         patch_size = self.patch_size
         
         assert H % patch_size == 0 and W % patch_size == 0, \
-            f"输入尺寸({H},{W})必须能被patch大小({patch_size})整除"
+            f"Input size ({H},{W}) must be divisible by patch size ({patch_size})"
         
         masked_x = x
         if mask is not None:
             if mask.dim() == 3:
                 mask = mask.unsqueeze(1)
-            assert mask.shape[0] == x.shape[0], f"批次大小不匹配: {mask.shape[0]} != {x.shape[0]}"
+            assert mask.shape[0] == x.shape[0], f"Batch size mismatch: {mask.shape[0]} != {x.shape[0]}"
             
             mask = mask.expand(-1, C, -1, -1)
             
@@ -382,7 +382,7 @@ class MAEBoostingTrainer:
             self.precomputed_summed_logits = None
             return
 
-        print(f"\n--- 预计算前 {len(self.trained_learners)} 个学习器集成的 Logits 之和 ---")
+        print(f"\n--- Precomputing sum of logits for the first {len(self.trained_learners)} integrated learners ---")
         N = len(self.train_dataset)
         self.precomputed_summed_logits = torch.zeros(N, self.num_classes, device='cpu')
 
@@ -392,8 +392,8 @@ class MAEBoostingTrainer:
             for learner_idx, model in enumerate(self.trained_learners):
                 model.to(self.device)
                 model.eval()
-                print(f"  > 正在处理学习器 {learner_idx + 1}/{len(self.trained_learners)}")
-                pbar = tqdm(loader, desc=f"预计算 Logits (Learner {learner_idx+1})", ncols=100)
+                print(f"  > Processing learner {learner_idx + 1}/{len(self.trained_learners)}")
+                pbar = tqdm(loader, desc=f"Precomputing Logits (Learner {learner_idx+1})", ncols=100)
                 for batch in pbar:
                     images = batch["image"].to(self.device)
                     masks = batch["masks"].to(self.device)
@@ -407,7 +407,7 @@ class MAEBoostingTrainer:
                     _, logits = model(images, mask=batch_masks_to_use)
                     self.precomputed_summed_logits[idxs] += logits.cpu()
                 
-                model.to('cpu') # 释放显存
+                model.to('cpu') # Free up VRAM
         
         torch.cuda.empty_cache()
 
@@ -431,7 +431,7 @@ class MAEBoostingTrainer:
             
             pbar = tqdm(
                 train_loader,
-                desc=f"Learner {k}/{self.num_learners} Epoch {epoch+1}/{num_epochs} [训练]",
+                desc=f"Learner {k}/{self.num_learners} Epoch {epoch+1}/{num_epochs} [Training]",
                 ncols=120
             )
 
@@ -496,7 +496,7 @@ class MAEBoostingTrainer:
 
         model_path = os.path.join(self.saved_models_dir, f"learner_{learner_idx}.pth")
         torch.save(current_model.state_dict(), model_path)
-        print(f"保存学习器 {k} 至: {model_path}")
+        print(f"Saved learner {k} to: {model_path}")
         
         self.training_logs["learner_wise_losses_recon"].append(total_loss_recon / len(train_loader))
         self.training_logs["learner_wise_losses_cls_ensemble"].append(total_loss_cls_ensemble / len(train_loader))
@@ -511,7 +511,7 @@ class MAEBoostingTrainer:
 
         pbar = tqdm(
             val_loader,
-            desc=f"Ensemble {num_models_in_ensemble} Epoch {epoch+1}/{num_epochs} [验证]",
+            desc=f"Ensemble {num_models_in_ensemble} Epoch {epoch+1}/{num_epochs} [Validation]",
             ncols=120
         )
 
@@ -548,23 +548,23 @@ class MAEBoostingTrainer:
 
         val_acc1 = total_val_acc_top1 / len(val_loader)
         val_acc5 = total_val_acc_top5 / len(val_loader)
-        print(f"\n[验证] 集成模型 (共 {num_models_in_ensemble} 个) - Top-1 Acc: {val_acc1*100:.2f}%, Top-5 Acc: {val_acc5*100:.2f}%")
+        print(f"\n[Validation] Ensemble Model ({num_models_in_ensemble} total) - Top-1 Acc: {val_acc1*100:.2f}%, Top-5 Acc: {val_acc5*100:.2f}%")
         return val_acc1, val_acc5
 
     ### MODIFIED ###
     def train_all_learners(self, num_epochs=10):
         for i in range(self.num_learners):
-            print(f"\n{'='*20} 开始训练学习器 {i + 1}/{self.num_learners} {'='*20}")
+            print(f"\n{'='*20} Starting training for learner {i + 1}/{self.num_learners} {'='*20}")
             
             self._precompute_summed_logits()
             
             self.train_learner(i, num_epochs)
 
         self.save_training_logs()
-        print("\n所有学习器训练完毕！")
+        print("\nAll learners have been trained!")
     
     def precompute_val_mask_orders(self):
-        print("\n预计算验证集掩码排序...")
+        print("\nPrecomputing validation set mask orders...")
         val_loader = DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -572,7 +572,7 @@ class MAEBoostingTrainer:
             num_workers=4
         )
         
-        for batch in tqdm(val_loader, desc="预计算验证集掩码"):
+        for batch in tqdm(val_loader, desc="Precomputing validation masks"):
             masks = batch["masks"]
             idxs = batch["index"]
             
@@ -602,7 +602,7 @@ class MAEBoostingTrainer:
         with open(log_file, "w") as f:
             json.dump(logs, f, indent=2)
         
-        print(f"训练日志保存至: {log_file}")
+        print(f"Training logs saved to: {log_file}")
         
         csv_file = os.path.join(self.logs_dir, "training_metrics.csv")
         with open(csv_file, "w", newline="") as f:
@@ -635,11 +635,11 @@ class MAEBoostingTrainer:
                             logs["training_history"]["validation_accuracy_top5"][learner][epoch]
                         ]
                     except IndexError:
-                        row += ["", "", "", "", "", ""] # 不足epoch填充空值
+                        row += ["", "", "", "", "", ""] # Fill with empty values if epochs are insufficient
                 
                 writer.writerow(row)
         
-        print(f"训练指标保存至: {csv_file}")
+        print(f"Training metrics saved to: {csv_file}")
             
 class Args:
     def __init__(self):
@@ -650,7 +650,7 @@ class Args:
         self.image_path = '/media/data/Imagenet/val' #'/media/data/Imagenet/train/n01440764/n01440764_10026.JPEG'
         self.data_path = '/media/data/Imagenet/val'
         self.batch_size = 32
-        self.image_size = [224, 224]  # 原始图像尺寸
+        self.image_size = [224, 224]  # Original image size
         self.output_dir = './output'
         self.show_pics = 100
         self.threshold = 0.6
